@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test de Conexión Frontend - FitTrack</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .info-box {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border-left: 4px solid #2196F3;
+        }
+        .success {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        .error {
+            color: #f44336;
+            font-weight: bold;
+        }
+        .warning {
+            color: #ff9800;
+            font-weight: bold;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #resultado {
+            margin-top: 20px;
+            padding: 15px;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f9f9f9;
+            border-left: 4px solid #2196F3;
+        }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Test de Conexión Frontend - Backend</h1>
+
+        <div class="info-box">
+            <strong>📍 Ubicación:</strong> Abre este archivo en el navegador:<br>
+            <code>http://localhost:5173/test-frontend.html</code><br><br>
+            <strong>⚠️ Importante:</strong> Asegúrate de que <code>npm run dev</code> esté corriendo.
+        </div>
+
+        <div class="test-section">
+            <h3>Información del API:</h3>
+            <p><strong>URL Base del API:</strong> <code id="api-url">Cargando...</code></p>
+            <p><strong>Origen Frontend:</strong> <code id="frontend-origin">Cargando...</code></p>
+        </div>
+
+        <div class="test-section">
+            <h3>Tests Disponibles:</h3>
+            <button onclick="testConexionBasica()">🔗 Test Conexión Básica</button>
+            <button onclick="testAuth()">🔐 Test Auth Endpoint</button>
+            <button onclick="testRegistro()">👤 Test Registro Completo</button>
+            <button onclick="testDiagnostico()">🔍 Diagnóstico Backend</button>
+        </div>
+
+        <div id="resultado"></div>
+    </div>
+
+    <script type="module">
+        // Importar la configuración del API
+        const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost/fittrack-backend/api';
+
+        // Mostrar configuración
+        document.getElementById('api-url').textContent = API_BASE_URL;
+        document.getElementById('frontend-origin').textContent = window.location.origin;
+
+        // Hacer disponible globalmente
+        window.API_BASE_URL = API_BASE_URL;
+
+        function mostrarResultado(titulo, data, tipo = 'info') {
+            const resultado = document.getElementById('resultado');
+            const clase = tipo === 'error' ? 'error' : tipo === 'success' ? 'success' : 'info';
+
+            let html = `<h3 class="${clase}">${titulo}</h3>`;
+
+            if (data.url) {
+                html += `<strong>URL:</strong> ${data.url}<br>`;
+            }
+
+            if (data.status !== undefined) {
+                html += `<strong>Status:</strong> ${data.status}<br>`;
+            }
+
+            if (data.error) {
+                html += `<strong class="error">Error:</strong> ${data.error}<br>`;
+            }
+
+            if (data.response) {
+                html += `<br><strong>Respuesta:</strong><br>${JSON.stringify(data.response, null, 2)}`;
+            }
+
+            resultado.innerHTML = html;
+        }
+
+        // Test 1: Conexión básica
+        window.testConexionBasica = async function() {
+            const url = `${API_BASE_URL}/test.php`;
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                mostrarResultado('✅ Conexión Básica Exitosa', {
+                    url: url,
+                    status: response.status,
+                    response: data
+                }, 'success');
+            } catch (error) {
+                mostrarResultado('❌ Error en Conexión Básica', {
+                    url: url,
+                    error: error.message,
+                    response: {
+                        tipo_error: error.name,
+                        detalles: 'No se pudo conectar al backend. Verifica que Apache esté corriendo.'
+                    }
+                }, 'error');
+            }
+        };
+
+        // Test 2: Auth endpoint
+        window.testAuth = async function() {
+            const url = `${API_BASE_URL}/auth.php?action=register`;
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: 'Test',
+                        email: 'test@test.com',
+                        password: 'test123'
+                    })
+                });
+                const data = await response.json();
+
+                if (response.status === 400 && data.message.includes('ya está registrado')) {
+                    mostrarResultado('⚠️ Auth Endpoint Funciona (usuario ya existe)', {
+                        url: url,
+                        status: response.status,
+                        response: data
+                    }, 'success');
+                } else {
+                    mostrarResultado('Test Auth Endpoint', {
+                        url: url,
+                        status: response.status,
+                        response: data
+                    }, response.ok ? 'success' : 'error');
+                }
+            } catch (error) {
+                mostrarResultado('❌ Error en Auth Endpoint', {
+                    url: url,
+                    error: error.message,
+                    response: {
+                        tipo_error: error.name,
+                        detalles: 'No se pudo conectar al endpoint de autenticación.',
+                        posibles_causas: [
+                            '1. Apache no está corriendo',
+                            '2. La carpeta no está en htdocs',
+                            '3. Problema de CORS',
+                            '4. URL incorrecta en .env'
+                        ]
+                    }
+                }, 'error');
+            }
+        };
+
+        // Test 3: Registro completo
+        window.testRegistro = async function() {
+            const randomEmail = `test${Date.now()}@test.com`;
+            const url = `${API_BASE_URL}/auth.php?action=register`;
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: 'Usuario Test',
+                        email: randomEmail,
+                        password: 'test123456',
+                        age: 25,
+                        gender: 'male'
+                    })
+                });
+
+                const data = await response.json();
+
+                mostrarResultado(
+                    response.ok ? '✅ Registro Exitoso' : '❌ Error en Registro',
+                    {
+                        url: url,
+                        status: response.status,
+                        response: data
+                    },
+                    response.ok ? 'success' : 'error'
+                );
+            } catch (error) {
+                mostrarResultado('❌ Error en Registro', {
+                    url: url,
+                    error: error.message,
+                    response: {
+                        tipo_error: error.name,
+                        mensaje: 'Este es el mismo error que ves en la aplicación',
+                        solucion_sugerida: 'Revisa la consola del navegador (F12) para más detalles'
+                    }
+                }, 'error');
+            }
+        };
+
+        // Test 4: Diagnóstico backend
+        window.testDiagnostico = async function() {
+            const url = `${API_BASE_URL}/diagnostico.php`;
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                mostrarResultado(
+                    data.todo_ok ? '✅ Backend Totalmente Funcional' : '⚠️ Backend con Problemas',
+                    {
+                        url: url,
+                        status: response.status,
+                        response: data
+                    },
+                    data.todo_ok ? 'success' : 'error'
+                );
+            } catch (error) {
+                mostrarResultado('❌ Error en Diagnóstico', {
+                    url: url,
+                    error: error.message
+                }, 'error');
+            }
+        };
+
+        // Test automático al cargar
+        window.onload = function() {
+            console.log('=== CONFIGURACIÓN DEL API ===');
+            console.log('API_BASE_URL:', API_BASE_URL);
+            console.log('VITE_API_URL:', import.meta.env.VITE_API_URL);
+            console.log('Frontend Origin:', window.location.origin);
+
+            document.getElementById('resultado').innerHTML =
+                '<p>✅ Página cargada correctamente.</p>' +
+                '<p>📌 <strong>API configurada en:</strong> <code>' + API_BASE_URL + '</code></p>' +
+                '<p>🔍 Haz clic en cualquier botón para probar la conexión.</p>';
+        };
+    </script>
+</body>
+</html>

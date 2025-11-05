@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagnóstico: Añadir Recetas al Plan</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 900px; margin: 30px auto; padding: 20px; background: #f5f5f5; }
+        .header { background: #667eea; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .section { background: white; padding: 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h2 { color: #333; margin-bottom: 15px; }
+        button { background: #667eea; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; margin: 5px; font-size: 16px; }
+        button:hover { background: #5568d3; }
+        .result { margin-top: 15px; padding: 15px; border-radius: 6px; }
+        .success { background: #d4edda; border-left: 4px solid #28a745; }
+        .error { background: #f8d7da; border-left: 4px solid #dc3545; }
+        .info { background: #d1ecf1; border-left: 4px solid #17a2b8; }
+        pre { background: #f4f4f4; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 13px; }
+        .step { background: #fff3cd; padding: 15px; border-radius: 6px; margin: 10px 0; border-left: 4px solid #ffc107; }
+        .code { background: #2d2d2d; color: #f8f8f2; padding: 2px 6px; border-radius: 3px; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔍 Diagnóstico: Añadir Recetas al Plan Semanal</h1>
+        <p>Herramienta para verificar por qué no se guardan las recetas en la base de datos</p>
+    </div>
+
+    <div class="section">
+        <h2>📝 Paso 1: Verificar que tienes un usuario</h2>
+        <button onclick="verificarUsuario()">🔍 Verificar Usuario Actual</button>
+        <div id="resultUsuario"></div>
+    </div>
+
+    <div class="section">
+        <h2>🍽️ Paso 2: Simular añadir receta al plan</h2>
+        <div class="step">
+            <strong>⚠️ IMPORTANTE:</strong> Antes de hacer clic, debes haber iniciado sesión en <code>http://localhost:5173</code>
+        </div>
+        <button onclick="testAñadirReceta()">🧪 Test: Añadir Receta de Prueba</button>
+        <div id="resultReceta"></div>
+    </div>
+
+    <div class="section">
+        <h2>💪 Paso 3: Simular añadir ejercicio al plan</h2>
+        <button onclick="testAñadirEjercicio()">🧪 Test: Añadir Ejercicio de Prueba</button>
+        <div id="resultEjercicio"></div>
+    </div>
+
+    <div class="section">
+        <h2>📊 Paso 4: Ver qué hay en tu plan</h2>
+        <button onclick="verPlanSemanal()">👀 Ver Mi Plan Semanal</button>
+        <div id="resultPlan"></div>
+    </div>
+
+    <div class="section">
+        <h2>🗑️ Paso 5: Limpiar plan de prueba</h2>
+        <button onclick="limpiarPlan()">🧹 Borrar Todo el Plan</button>
+        <div id="resultLimpiar"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost/fittrackapp/backend/api';
+
+        function mostrarResultado(elementId, html, tipo = 'info') {
+            document.getElementById(elementId).innerHTML = `<div class="result ${tipo}">${html}</div>`;
+        }
+
+        async function verificarUsuario() {
+            const userStr = localStorage.getItem('user');
+
+            if (!userStr) {
+                mostrarResultado('resultUsuario', `
+                    <h3>❌ NO estás logueado</h3>
+                    <p><strong>Solución:</strong></p>
+                    <ol>
+                        <li>Ve a: <code>http://localhost:5173</code></li>
+                        <li>Haz clic en "Iniciar Sesión"</li>
+                        <li>Ingresa tu email y contraseña</li>
+                        <li>Vuelve aquí y prueba de nuevo</li>
+                    </ol>
+                `, 'error');
+                return;
+            }
+
+            try {
+                const user = JSON.parse(userStr);
+                mostrarResultado('resultUsuario', `
+                    <h3>✅ Usuario encontrado</h3>
+                    <p><strong>ID:</strong> ${user.id}</p>
+                    <p><strong>Nombre:</strong> ${user.name}</p>
+                    <p><strong>Email:</strong> ${user.email}</p>
+                    <pre>${JSON.stringify(user, null, 2)}</pre>
+                    <p style="margin-top: 10px;">✓ Puedes continuar con los siguientes pasos</p>
+                `, 'success');
+            } catch (error) {
+                mostrarResultado('resultUsuario', `
+                    <h3>⚠️ Error al parsear usuario</h3>
+                    <p>${error.message}</p>
+                    <p>Intenta cerrar sesión e iniciar sesión de nuevo.</p>
+                `, 'error');
+            }
+        }
+
+        async function testAñadirReceta() {
+            const userStr = localStorage.getItem('user');
+            if (!userStr) {
+                mostrarResultado('resultReceta', '<h3>❌ Primero verifica tu usuario (Paso 1)</h3>', 'error');
+                return;
+            }
+
+            const user = JSON.parse(userStr);
+            const recetaPrueba = {
+                id: 1,
+                name: 'Tostadas de Aguacate',
+                category: 'Desayuno',
+                calories: 280,
+                macros: { protein: 8, carbs: 32, fat: 14 },
+                prepTime: 10,
+                difficulty: 'Fácil',
+                ingredients: ['2 rebanadas de pan integral', '1 aguacate', 'Sal y pimienta'],
+                instructions: ['Tostar el pan', 'Machacar el aguacate', 'Untar sobre el pan']
+            };
+
+            try {
+                mostrarResultado('resultReceta', '<p>🔄 Enviando petición...</p>', 'info');
+
+                const response = await fetch(`${API_BASE}/weekly-plan.php?action=add-recipe`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: user.id,
+                        day: 'Lunes',
+                        recipe: recetaPrueba
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    mostrarResultado('resultReceta', `
+                        <h3>✅ ¡Receta añadida correctamente!</h3>
+                        <p><strong>Status:</strong> ${response.status}</p>
+                        <p><strong>Mensaje:</strong> ${data.message}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                        <p style="margin-top: 10px;">✓ La receta se guardó en la base de datos</p>
+                        <p>✓ Puedes verla en phpMyAdmin → tabla: weekly_plan_recipes</p>
+                    `, 'success');
+                } else {
+                    mostrarResultado('resultReceta', `
+                        <h3>❌ Error al añadir receta</h3>
+                        <p><strong>Status:</strong> ${response.status}</p>
+                        <p><strong>Mensaje:</strong> ${data.message || 'Sin mensaje'}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `, 'error');
+                }
+            } catch (error) {
+                mostrarResultado('resultReceta', `
+                    <h3>❌ Error de conexión</h3>
+                    <p><strong>Error:</strong> ${error.message}</p>
+                    <p><strong>Posibles causas:</strong></p>
+                    <ul>
+                        <li>Apache no está corriendo</li>
+                        <li>Problema de CORS</li>
+                        <li>URL incorrecta: ${API_BASE}/weekly-plan.php</li>
+                    </ul>
+                    <p><strong>Verifica:</strong> <a href="${API_BASE}/test.php" target="_blank">${API_BASE}/test.php</a></p>
+                `, 'error');
+            }
+        }
+
+        async function testAñadirEjercicio() {
+            const userStr = localStorage.getItem('user');
+            if (!userStr) {
+                mostrarResultado('resultEjercicio', '<h3>❌ Primero verifica tu usuario (Paso 1)</h3>', 'error');
+                return;
+            }
+
+            const user = JSON.parse(userStr);
+            const ejercicioPrueba = {
+                id: 1,
+                name: 'Press de Banca',
+                muscle: 'Pecho',
+                difficulty: 'Intermedio',
+                equipment: 'Barra',
+                instructions: ['Acostarse en el banco', 'Agarrar la barra', 'Bajar a pecho', 'Empujar hacia arriba']
+            };
+
+            try {
+                mostrarResultado('resultEjercicio', '<p>🔄 Enviando petición...</p>', 'info');
+
+                const response = await fetch(`${API_BASE}/weekly-plan.php?action=add-exercise`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: user.id,
+                        day: 'Lunes',
+                        exercise: ejercicioPrueba
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    mostrarResultado('resultEjercicio', `
+                        <h3>✅ ¡Ejercicio añadido correctamente!</h3>
+                        <p><strong>Status:</strong> ${response.status}</p>
+                        <p><strong>Mensaje:</strong> ${data.message}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                        <p style="margin-top: 10px;">✓ El ejercicio se guardó en la base de datos</p>
+                        <p>✓ Puedes verlo en phpMyAdmin → tabla: weekly_plan_exercises</p>
+                    `, 'success');
+                } else {
+                    mostrarResultado('resultEjercicio', `
+                        <h3>❌ Error al añadir ejercicio</h3>
+                        <p><strong>Status:</strong> ${response.status}</p>
+                        <p><strong>Mensaje:</strong> ${data.message || 'Sin mensaje'}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `, 'error');
+                }
+            } catch (error) {
+                mostrarResultado('resultEjercicio', `
+                    <h3>❌ Error de conexión</h3>
+                    <p><strong>Error:</strong> ${error.message}</p>
+                `, 'error');
+            }
+        }
+
+        async function verPlanSemanal() {
+            const userStr = localStorage.getItem('user');
+            if (!userStr) {
+                mostrarResultado('resultPlan', '<h3>❌ Primero verifica tu usuario (Paso 1)</h3>', 'error');
+                return;
+            }
+
+            const user = JSON.parse(userStr);
+
+            try {
+                const response = await fetch(`${API_BASE}/weekly-plan.php?user_id=${user.id}`);
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    const totalRecetas = Object.values(data.plan || {}).reduce((sum, day) => sum + (day.recipes?.length || 0), 0);
+                    const totalEjercicios = Object.values(data.plan || {}).reduce((sum, day) => sum + (day.exercises?.length || 0), 0);
+
+                    mostrarResultado('resultPlan', `
+                        <h3>📊 Tu Plan Semanal</h3>
+                        <p><strong>Total de recetas:</strong> ${totalRecetas}</p>
+                        <p><strong>Total de ejercicios:</strong> ${totalEjercicios}</p>
+                        <pre>${JSON.stringify(data.plan, null, 2)}</pre>
+                        ${totalRecetas === 0 && totalEjercicios === 0 ? '<p style="color: orange;">⚠️ Tu plan está vacío. Prueba los pasos 2 y 3 para añadir contenido.</p>' : ''}
+                    `, totalRecetas > 0 || totalEjercicios > 0 ? 'success' : 'info');
+                } else {
+                    mostrarResultado('resultPlan', `
+                        <h3>❌ Error al obtener plan</h3>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `, 'error');
+                }
+            } catch (error) {
+                mostrarResultado('resultPlan', `<h3>❌ Error: ${error.message}</h3>`, 'error');
+            }
+        }
+
+        async function limpiarPlan() {
+            if (!confirm('¿Estás seguro de que quieres borrar TODO tu plan semanal?')) {
+                return;
+            }
+
+            const userStr = localStorage.getItem('user');
+            if (!userStr) {
+                mostrarResultado('resultLimpiar', '<h3>❌ Primero verifica tu usuario</h3>', 'error');
+                return;
+            }
+
+            const user = JSON.parse(userStr);
+
+            mostrarResultado('resultLimpiar', '<p>🧹 Limpiando plan...</p>', 'info');
+
+            // Obtener plan actual
+            const planResponse = await fetch(`${API_BASE}/weekly-plan.php?user_id=${user.id}`);
+            const planData = await planResponse.json();
+
+            let eliminados = 0;
+
+            // Eliminar todas las recetas
+            for (const day in planData.plan) {
+                const recipes = planData.plan[day].recipes || [];
+                for (const recipe of recipes) {
+                    try {
+                        await fetch(`${API_BASE}/weekly-plan.php?action=remove-recipe`, {
+                            method: 'DELETE',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ user_id: user.id, day, recipe_id: recipe.id })
+                        });
+                        eliminados++;
+                    } catch (e) {}
+                }
+
+                const exercises = planData.plan[day].exercises || [];
+                for (const exercise of exercises) {
+                    try {
+                        await fetch(`${API_BASE}/weekly-plan.php?action=remove-exercise`, {
+                            method: 'DELETE',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ user_id: user.id, day, exercise_id: exercise.id })
+                        });
+                        eliminados++;
+                    } catch (e) {}
+                }
+            }
+
+            mostrarResultado('resultLimpiar', `
+                <h3>✅ Plan limpiado</h3>
+                <p>Se eliminaron ${eliminados} elementos</p>
+            `, 'success');
+        }
+
+        // Verificar usuario automáticamente al cargar
+        window.onload = () => {
+            const userStr = localStorage.getItem('user');
+            if (!userStr) {
+                document.body.insertAdjacentHTML('afterbegin', `
+                    <div class="section error">
+                        <h3>⚠️ NO estás logueado</h3>
+                        <p>Para usar esta herramienta necesitas:</p>
+                        <ol>
+                            <li>Ir a <a href="http://localhost:5173" target="_blank">http://localhost:5173</a></li>
+                            <li>Iniciar sesión con tu usuario</li>
+                            <li>Volver a esta página</li>
+                            <li>Hacer clic en "Verificar Usuario Actual"</li>
+                        </ol>
+                    </div>
+                `);
+            }
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+# Habilitar mod_rewrite
+RewriteEngine On
+
+# NO interceptar peticiones OPTIONS aquí
+# Dejar que lleguen a los archivos PHP donde cors-handler.php las maneja
+
+# No reescribir archivos que existen
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Permitir acceso directo a archivos .php
+RewriteCond %{REQUEST_FILENAME} !\.php$
+
+# Añadir .php si no está presente
+RewriteRule ^([^\.]+)$ $1.php [NC,L]

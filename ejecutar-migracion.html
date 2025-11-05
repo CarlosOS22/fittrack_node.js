@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ejecutar Migración - FitTrack</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 2rem;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1rem;
+        }
+
+        .step {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+
+        .step-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            margin-bottom: 10px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .results {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            display: none;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .results.show {
+            display: block;
+        }
+
+        .results pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            color: #333;
+        }
+
+        .success {
+            color: #28a745;
+        }
+
+        .error {
+            color: #dc3545;
+        }
+
+        .warning {
+            color: #ffc107;
+        }
+
+        .info {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Herramienta de Migración</h1>
+        <p class="subtitle">Actualiza la base de datos de FitTrack con las nuevas columnas</p>
+
+        <div class="info">
+            <strong>ℹ️ Información:</strong> Esta herramienta agregará las columnas necesarias para el sistema de cálculo automático de calorías y macros.
+        </div>
+
+        <div class="step">
+            <div class="step-title">Paso 1: Verificar Estado de la Base de Datos</div>
+            <button onclick="checkDatabase()" id="checkBtn">Verificar Base de Datos</button>
+        </div>
+
+        <div class="step">
+            <div class="step-title">Paso 2: Ejecutar Migración</div>
+            <button onclick="runMigration()" id="migrateBtn">Ejecutar Migración</button>
+        </div>
+
+        <div class="results" id="results">
+            <pre id="resultsContent"></pre>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost/fittrackapp/backend/api';
+
+        function showResults(content, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            const resultsContent = document.getElementById('resultsContent');
+            resultsContent.textContent = content;
+            resultsContent.className = type;
+            resultsDiv.classList.add('show');
+        }
+
+        async function checkDatabase() {
+            const btn = document.getElementById('checkBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Verificando...';
+
+            try {
+                const response = await fetch(`${API_BASE}/check-database.php`);
+                const data = await response.json();
+
+                let output = '=== ESTADO DE LA BASE DE DATOS ===\n\n';
+                output += data.message + '\n\n';
+
+                if (data.existingColumns && data.existingColumns.length > 0) {
+                    output += 'Columnas existentes:\n';
+                    data.existingColumns.forEach(col => {
+                        output += `  ✅ ${col}\n`;
+                    });
+                }
+
+                if (data.missingColumns && data.missingColumns.length > 0) {
+                    output += '\nColumnas faltantes:\n';
+                    data.missingColumns.forEach(col => {
+                        output += `  ❌ ${col}\n`;
+                    });
+                    output += '\n⚠️ Necesitas ejecutar la migración (Paso 2)';
+                }
+
+                showResults(output, data.needsMigration ? 'warning' : 'success');
+            } catch (error) {
+                showResults('❌ Error al verificar la base de datos:\n' + error.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Verificar Base de Datos';
+            }
+        }
+
+        async function runMigration() {
+            const btn = document.getElementById('migrateBtn');
+
+            if (!confirm('¿Estás seguro de que quieres ejecutar la migración? Esto modificará la estructura de la tabla user_data.')) {
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Ejecutando migración...';
+
+            try {
+                const response = await fetch(`${API_BASE}/run-migration.php`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+
+                let output = '=== RESULTADO DE LA MIGRACIÓN ===\n\n';
+                output += data.message + '\n\n';
+
+                if (data.details && data.details.length > 0) {
+                    output += 'Detalles:\n';
+                    data.details.forEach(detail => {
+                        output += `${detail}\n`;
+                    });
+                }
+
+                if (data.success) {
+                    output += '\n✅ Migración completada exitosamente!\n';
+                    output += '\nAhora puedes:\n';
+                    output += '1. Recargar tu aplicación (Ctrl + Shift + R)\n';
+                    output += '2. Ir a tu perfil\n';
+                    output += '3. Guardar tus datos de fitness\n';
+                    output += '4. Ver las calorías calculadas automáticamente';
+                }
+
+                showResults(output, data.success ? 'success' : 'error');
+
+                // Verificar de nuevo después de la migración
+                if (data.success) {
+                    setTimeout(() => {
+                        checkDatabase();
+                    }, 2000);
+                }
+            } catch (error) {
+                showResults('❌ Error al ejecutar la migración:\n' + error.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Ejecutar Migración';
+            }
+        }
+
+        // Verificar automáticamente al cargar la página
+        window.addEventListener('load', () => {
+            checkDatabase();
+        });
+    </script>
+</body>
+</html>
